@@ -24,7 +24,7 @@ using Microsoft.Extensions.WebEncoders.Testing;
 using Moq;
 using Xunit;
 
-namespace Microsoft.AspNetCore.Mvc.Razor.Test
+namespace Microsoft.AspNetCore.Mvc.Razor
 {
     public class RazorViewEngineTest
     {
@@ -1486,13 +1486,10 @@ namespace Microsoft.AspNetCore.Mvc.Razor.Test
         [InlineData(null, null)]
         [InlineData(null, "")]
         [InlineData(null, "Page")]
-        [InlineData(null, "Folder/Page")]
-        [InlineData(null, "Folder1/Folder2/Page")]
         [InlineData("/Home/Index.cshtml", null)]
         [InlineData("/Home/Index.cshtml", "")]
         [InlineData("/Home/Index.cshtml", "Page")]
-        [InlineData("/Home/Index.cshtml", "Folder/Page")]
-        [InlineData("/Home/Index.cshtml", "Folder1/Folder2/Page")]
+        
         public void GetAbsolutePath_ReturnsPagePathUnchanged_IfNotAPath(string executingFilePath, string pagePath)
         {
             // Arrange
@@ -1503,6 +1500,23 @@ namespace Microsoft.AspNetCore.Mvc.Razor.Test
 
             // Assert
             Assert.Same(pagePath, result);
+        }
+
+        [Theory]
+        [InlineData(null, "Folder/Page", "/Folder/Page.cshtml")]
+        [InlineData(null, "Folder1/Folder2/Page", "/Folder1/Folder2/Page.cshtml")]
+        [InlineData("/Home/Index.cshtml", "Folder/Page", "/Home/Folder/Page.cshtml")]
+        [InlineData("/Home/Index.cshtml", "Folder1/Folder2/Page", "/Home/Folder1/Folder2/Page.cshtml")]
+        public void GetAbsolutePath_ResolvesNamesThatLookLikePaths(string executingFilePath, string pagePath, string expected)
+        {
+            // Arrange
+            var viewEngine = CreateViewEngine();
+
+            // Act
+            var result = viewEngine.GetAbsolutePath(executingFilePath, pagePath);
+
+            // Assert
+            Assert.Equal(expected, result);
         }
 
         [Theory]

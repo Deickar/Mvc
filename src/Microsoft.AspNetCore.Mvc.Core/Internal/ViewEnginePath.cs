@@ -11,9 +11,24 @@ namespace Microsoft.AspNetCore.Mvc.Internal
 {
     public static class ViewEnginePath
     {
+        public static readonly char[] PathSeparators = new[] { '/', '\\' };
         private const string CurrentDirectoryToken = ".";
         private const string ParentDirectoryToken = "..";
-        private static readonly char[] _pathSeparators = new[] { '/', '\\' };
+        private static readonly string[] TokensRequiringNormalization = new string[]
+        {
+            // ./
+            CurrentDirectoryToken + PathSeparators[0],
+            // .\
+            CurrentDirectoryToken + PathSeparators[1],
+            // ../
+            ParentDirectoryToken + PathSeparators[0],
+            // ..\
+            ParentDirectoryToken + PathSeparators[1],
+            // //
+            "" + PathSeparators[0] + PathSeparators[0],
+            // \\
+            "" + PathSeparators[1] + PathSeparators[1],
+        };
 
         public static string CombinePath(string first, string second)
         {
@@ -42,18 +57,18 @@ namespace Microsoft.AspNetCore.Mvc.Internal
                 result = first.Substring(0, index + 1) + second;
             }
 
-            return ResolvePath(result);
+            return NormalizePath(result);
         }
 
-        public static string ResolvePath(string path)
+        public static string NormalizePath(string path)
         {
-            if (!RequiresPathResolution(path))
+            if (!RequiresPathNormalization(path))
             {
                 return path;
             }
 
             var pathSegments = new List<StringSegment>();
-            var tokenizer = new StringTokenizer(path, _pathSeparators);
+            var tokenizer = new StringTokenizer(path, PathSeparators);
             foreach (var segment in tokenizer)
             {
                 if (segment.Length == 0)
@@ -93,10 +108,17 @@ namespace Microsoft.AspNetCore.Mvc.Internal
             return builder.ToString();
         }
 
-        private static bool RequiresPathResolution(string path)
+        private static bool RequiresPathNormalization(string path)
         {
-            return path.IndexOf(ParentDirectoryToken, StringComparison.Ordinal) != -1 ||
-                path.IndexOf(CurrentDirectoryToken, StringComparison.Ordinal) != -1;
+            for (var i = 0; i < TokensRequiringNormalization.Length; i++)
+            {
+                if (path.IndexOf(TokensRequiringNormalization[i]) != -1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

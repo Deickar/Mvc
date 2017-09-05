@@ -142,7 +142,7 @@ namespace Microsoft.AspNetCore.Mvc.Razor
                 throw new ArgumentException(Resources.ArgumentCannotBeNullOrEmpty, nameof(pagePath));
             }
 
-            if (!(IsApplicationRelativePath(pagePath) || IsRelativePath(pagePath)))
+            if (!LooksLikePath(pagePath))
             {
                 // Not a path this method can handle.
                 return new RazorPageResult(pagePath, Enumerable.Empty<string>());
@@ -191,7 +191,7 @@ namespace Microsoft.AspNetCore.Mvc.Razor
                 throw new ArgumentException(Resources.ArgumentCannotBeNullOrEmpty, nameof(viewPath));
             }
 
-            if (!(IsApplicationRelativePath(viewPath) || IsRelativePath(viewPath)))
+            if (!LooksLikePath(viewPath))
             {
                 // Not a path this method can handle.
                 return ViewEngineResult.NotFound(viewPath, Enumerable.Empty<string>());
@@ -205,8 +205,7 @@ namespace Microsoft.AspNetCore.Mvc.Razor
         {
             var applicationRelativePath = GetAbsolutePath(executingFilePath, pagePath);
             var cacheKey = new ViewLocationCacheKey(applicationRelativePath, isMainPage);
-            ViewLocationCacheResult cacheResult;
-            if (!ViewLookupCache.TryGetValue(cacheKey, out cacheResult))
+            if (!ViewLookupCache.TryGetValue(cacheKey, out ViewLocationCacheResult cacheResult))
             {
                 var expirationTokens = new HashSet<IChangeToken>();
                 cacheResult = CreateCacheResult(expirationTokens, applicationRelativePath, isMainPage);
@@ -304,7 +303,17 @@ namespace Microsoft.AspNetCore.Mvc.Razor
                 return pagePath;
             }
 
-            if (!IsRelativePath(pagePath))
+            var hasViewExtension = pagePath.EndsWith(ViewExtension, StringComparison.OrdinalIgnoreCase);
+            if (pagePath.IndexOfAny(ViewEnginePath.PathSeparators) != -1)
+            {
+                // A name that looks like a path (e.g. Shared/_Partial). Add an extension if it doesn't already
+                // have one and treat it like a path.
+                if (!hasViewExtension)
+                {
+                    pagePath = pagePath + ViewExtension;
+                }
+            }
+            else if (!hasViewExtension)
             {
                 // A page name; no change required.
                 return pagePath;
@@ -316,7 +325,7 @@ namespace Microsoft.AspNetCore.Mvc.Razor
                 // path relative to currently-executing view, if any.
                 // Not yet executing a view. Start in app root.
                 var absolutePath = "/" + pagePath;
-                return ViewEnginePath.ResolvePath(absolutePath);
+                return ViewEnginePath.NormalizePath(absolutePath);
             }
 
             return ViewEnginePath.CombinePath(executingFilePath, pagePath);
@@ -491,6 +500,28 @@ namespace Microsoft.AspNetCore.Mvc.Razor
 
             // Though ./ViewName looks like a relative path, framework searches for that view using view locations.
             return name.EndsWith(ViewExtension, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool LooksLikePath(string name)
+        {
+            Debug.Assert(!string.IsNullOrEmpty(name));
+
+            if (IsApplicationRelativePath(name))
+            {
+                return true;
+            }
+
+            if (IsRelativePath(name))
+            {
+                return true;
+            }
+
+            if (name.IndexOfAny(ViewEnginePath.PathSeparators) != -1)
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }

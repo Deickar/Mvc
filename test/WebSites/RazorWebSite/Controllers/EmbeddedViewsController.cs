@@ -8,5 +8,7 @@ namespace RazorWebSite.Controllers
     public class EmbeddedViewsController : Controller
     {
         public IActionResult Index() => View("/Views/EmbeddedHome/Index.cshtml");
+
+        public IActionResult RelativeNonPath() => View("/Views/EmbeddedHome/RelativeNonPath.cshtml");
     }
 }

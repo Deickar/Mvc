@@ -493,5 +493,18 @@ Partial";
             // Assert
             Assert.Equal(expected, responseContent.Trim());
         }
+
+        [Fact]
+        public async Task ViewEngine_ResolvesPathsWithSlashesThatDoNotHaveExtensions()
+        {
+            // Arrange
+            var expected = @"<embdedded-layout>Hello from EmbeddedHome\EmbeddedPartial</embdedded-layout>";
+
+            // Act
+            var responseContent = await Client.GetStringAsync("/EmbeddedViews/RelativeNonPath");
+
+            // Assert
+            Assert.Equal(expected, responseContent.Trim());
+        }
     }
 }
